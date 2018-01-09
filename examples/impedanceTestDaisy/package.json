@@ -1,0 +1,17 @@
+{
+  "name": "impedance-test-daisy",
+  "version": "1.0.0",
+  "description": "Impedance test function with daisy example",
+  "main": "impedanceTestDaisy.js",
+  "scripts": {
+    "start": "node impedanceTestDaisy.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "get"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "openbci": "^2.0.0"
+  }
+}

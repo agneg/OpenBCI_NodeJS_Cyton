@@ -1396,7 +1396,7 @@ Cyton.prototype.impedanceTestAllChannels = function () {
   let upperLimit = k.OBCINumberOfChannelsCyton;
 
   /* istanbul ignore if */
-  if (this.options.daisy) {
+  if (this.options.boardType == k.OBCIBoardDaisy) {
     upperLimit = k.OBCINumberOfChannelsDaisy;
   }
 
@@ -2165,13 +2165,18 @@ Cyton.prototype._finalizeNewSample = function (sampleObject) {
     this.badPackets++;
     this.emit(k.OBCIEmitterDroppedPacket, [this.previousSampleNumber + 1]);
   } else if (this.impedanceTest.active) {
-    this._processImpedanceTest(sampleObject);
+    if (_.eq(this.getBoardType(), k.OBCIBoardDaisy)) {
+      this._finalizeNewSampleForDaisy(sampleObject, true);
+    } else {
+      this._processImpedanceTest(sampleObject);
+      this.emit(k.OBCIEmitterSample, sampleObject);
+    }
   } else {
     // With the daisy board attached, lower channels (1-8) come in packets with odd sample numbers and upper
     //  channels (9-16) come in packets with even sample numbers
     if (_.eq(this.getBoardType(), k.OBCIBoardDaisy)) {
       // Send the sample for downstream sample compaction
-      this._finalizeNewSampleForDaisy(sampleObject);
+      this._finalizeNewSampleForDaisy(sampleObject, false);
     } else {
       this.emit(k.OBCIEmitterSample, sampleObject);
     }
@@ -2188,7 +2193,7 @@ Cyton.prototype._finalizeNewSample = function (sampleObject) {
  * @private
  * @author AJ Keller (@pushtheworldllc)
  */
-Cyton.prototype._finalizeNewSampleForDaisy = function (sampleObject) {
+Cyton.prototype._finalizeNewSampleForDaisy = function (sampleObject, impedance) {
   if (obciUtils.isOdd(sampleObject.sampleNumber)) {
     // Check for the skipped packet condition
     if (this._lowerChannelsSampleObject) {
@@ -2203,7 +2208,8 @@ Cyton.prototype._finalizeNewSampleForDaisy = function (sampleObject) {
       let mergedSample = obciUtils.makeDaisySampleObject(this._lowerChannelsSampleObject, sampleObject);
       // Set the _lowerChannelsSampleObject object to null
       this._lowerChannelsSampleObject = null;
-      // Emite the new merged sample
+      // Emite the new merged sample and if relevant process impedance
+      if(impedance) this._processImpedanceTest(mergedSample);
       this.emit('sample', mergedSample);
     } else {
       // Missed the odd packet, i.e. two evens in a row
