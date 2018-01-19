@@ -2463,11 +2463,83 @@ $$$`);
     });
   });
 
+  describe('#_finalizeNewSample', function () {
+    let ourBoard;
+
+    before(() => {
+      ourBoard = new Cyton({
+        verbose: true,
+        simulate: true
+      });
+    });
+
+    it('should emit dropped packet on bad packet', function (done) {
+      const sample = openBCIUtilities.newSample(0);
+      sample.valid = false;
+      sample._count = 52;
+
+      const expectedBadPackets = 1;
+      const expectedInternalCount = 3;
+      const expectedPreviousSampleNumber = 2;
+
+      ourBoard.badPackets = expectedBadPackets - 1;
+      ourBoard.previousSampleNumber = expectedPreviousSampleNumber - 1;
+      ourBoard.sampleCount = expectedInternalCount;
+
+      ourBoard.once('droppedPacket', (droppedPacketArray) => {
+        expect(droppedPacketArray).to.deep.equal([expectedPreviousSampleNumber]);
+        expect(ourBoard.badPackets).to.equal(expectedBadPackets);
+        done();
+      });
+      ourBoard._finalizeNewSample(sample);
+    });
+
+    it('will send sample to processing if daisy', function () {
+      const sample = openBCIUtilities.newSample(0);
+
+      ourBoard.overrideInfoForBoardType(k.OBCIBoardDaisy);
+
+      let finalizeNewSampleForDaisySpy = sinon.spy(ourBoard, '_finalizeNewSampleForDaisy');
+
+      ourBoard._finalizeNewSample(sample);
+
+      finalizeNewSampleForDaisySpy.should.have.been.calledOnce();
+      finalizeNewSampleForDaisySpy.restore();
+    });
+
+    it('will send sample to process impedance test', function () {
+      const sample = openBCIUtilities.newSample(0);
+
+      ourBoard.overrideInfoForBoardType(k.OBCIBoardCyton);
+      ourBoard.impedanceTest.active = true;
+
+      let processImpedanceTestSpy = sinon.spy(ourBoard, '_processImpedanceTest');
+
+      ourBoard._finalizeNewSample(sample);
+
+      processImpedanceTestSpy.should.have.been.calledOnce();
+      processImpedanceTestSpy.restore();
+    });
+
+    it('will emit sample whtn process impedance test active', function (done) {
+      const sample = openBCIUtilities.newSample(0);
+
+      ourBoard.overrideInfoForBoardType(k.OBCIBoardCyton);
+      ourBoard.impedanceTest.active = true;
+
+      ourBoard.once('sample', () => {
+        done();
+      });
+
+      ourBoard._finalizeNewSample(sample);
+    });
+  });
   describe('#_finalizeNewSampleForDaisy', function () {
     let ourBoard, randomSampleGenerator, sampleEvent, failTimeout;
     before(() => {
       ourBoard = new Cyton({
-        verbose: true
+        verbose: true,
+        simulate: true
       });
       randomSampleGenerator = openBCIUtilities.randomSample(k.OBCINumberOfChannelsCyton, k.OBCISampleRate250, false, 'none');
     });
@@ -2503,11 +2575,16 @@ $$$`);
       // The function to be called when sample event is fired
       let sampleEvent = (sample) => {
         // test pass here
+        processImpedanceTestSpy.should.have.been.calledOnce();
+        processImpedanceTestSpy.restore();
         done();
       };
 
       // Subscribe to the sample event
       ourBoard.once('sample', sampleEvent);
+
+      ourBoard.impedanceTest.active = true;
+      let processImpedanceTestSpy = sinon.spy(ourBoard, '_processImpedanceTest');
 
       // Call the function under test twice
       ourBoard._finalizeNewSampleForDaisy(oddSample);
