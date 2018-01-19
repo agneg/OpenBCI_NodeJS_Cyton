@@ -1396,7 +1396,7 @@ Cyton.prototype.impedanceTestAllChannels = function () {
   let upperLimit = k.OBCINumberOfChannelsCyton;
 
   /* istanbul ignore if */
-  if (this.options.boardType == k.OBCIBoardDaisy) {
+  if (this.options.boardType === k.OBCIBoardDaisy) {
     upperLimit = k.OBCINumberOfChannelsDaisy;
   }
 
@@ -2209,7 +2209,7 @@ Cyton.prototype._finalizeNewSampleForDaisy = function (sampleObject, impedance) 
       // Set the _lowerChannelsSampleObject object to null
       this._lowerChannelsSampleObject = null;
       // Emite the new merged sample and if relevant process impedance
-      if(impedance) this._processImpedanceTest(mergedSample);
+      if (impedance) this._processImpedanceTest(mergedSample);
       this.emit('sample', mergedSample);
     } else {
       // Missed the odd packet, i.e. two evens in a row
